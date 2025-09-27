@@ -1,0 +1,32 @@
+---
+title: "ICPSR/Retraction Watch, First Look"
+author: "Ashvin Narayan"
+date: "26 September 2025"
+output: pdf_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+# load icpsr, retraction watch databases
+icpsr = read.csv("icpsr/icpsr_bib.csv")
+retractions = read.csv("retraction-watch/retraction_watch.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
