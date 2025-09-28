@@ -8,26 +8,21 @@ library(parallel)
 icpsr = read.csv("icpsr/icpsr_bib.csv")
 retractions = read.csv("retraction-watch/retraction_watch.csv")
 
-## Cleaning ICPSR data
-
-# convert ;-separated list strings to vectors
+# convert ;-separated list strings to vectors - icpsr
 icpsr <- icpsr |> 
   mutate(across(ends_with(".s."), ~ str_trim(.))) |>
   mutate(across(ends_with(".s."), ~ str_squish(.))) |>
   mutate(across(ends_with(".s."), ~ str_replace_all(., pattern = ";[[:space:]]", replacement = ";"))) |>
   mutate(across(ends_with(".s."), ~ strsplit(., ';')))
 
-
-## Cleaning Retraction Watch data
-
-# convert ;-separated list strings to vectors
+# convert ;-separated list strings to vectors - retractions
 retractions <- retractions |> 
   mutate(across(everything(), ~ str_trim(.))) |>
   mutate(across(everything(), ~ str_squish(.))) |>
   mutate(across(ends_with(".s."), ~ str_replace_all(., pattern = ";[[:space:]]", replacement = ";"))) |>
   mutate(across(everything(), ~ strsplit(., ';')))
 
-
+## convert vector type to column type - get rid of strings in numeric columns, etc
 
 
 
