@@ -8,15 +8,44 @@ output: pdf_document
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-
-# load icpsr, retraction watch databases
-icpsr = read.csv("icpsr/icpsr_bib.csv")
-retractions = read.csv("retraction-watch/retraction_watch.csv")
+library(dplyr)
+library(stringr)
+library(parallel)
 ```
 
+```{r load-data}
+# setwd(...) # set working directory to project folder
 
+# load icpsr, retraction watch databases
+icpsr <- read.csv("icpsr/icpsr_bib.csv")
+retractions <- read.csv("retraction-watch/retraction_watch.csv")
+```
 
+### Preprocessing
 
+```{r cleaning-icpsr}
+## Cleaning ICPSR data
+cat(colnames(icpsr))
+
+# convert ;-separated list strings to vectors
+icpsr <- icpsr |> 
+  mutate(across(everything(), ~ str_trim(.))) |>
+  mutate(across(everything(), ~ str_squish(.))) |>
+  mutate(across(ends_with(".s."), ~ str_replace_all(., pattern = ";[[:space:]]", replacement = ";"))) |>
+  mutate(across(ends_with(".s."), ~ strsplit(., ';')))
+```
+
+```{r cleaning-rw}
+## Cleaning Retraction Watch data
+cat(colnames(retractions))
+
+# convert ;-separated list strings to vectors
+retractions <- retractions |> 
+  mutate(across(everything(), ~ str_trim(.))) |>
+  mutate(across(everything(), ~ str_squish(.))) |>
+  mutate(across(ends_with(".s."), ~ str_replace_all(., pattern = ";[[:space:]]", replacement = ";"))) |>
+  mutate(across(everything(), ~ strsplit(., ';')))
+```
 
 
 
