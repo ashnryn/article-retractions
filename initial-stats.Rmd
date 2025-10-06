@@ -1,0 +1,89 @@
+---
+title: "ICPSR/Retraction Watch, First Look"
+author: "Ashvin Narayan"
+date: "26 September 2025"
+output: pdf_document
+---
+
+```{r setup, include = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+sys.source("Preprocessing.R", envir = knitr::knit_global())
+```
+
+### DOIs available
+
+```{r dois-1}
+# What proportion of entries in each table have DOIs (ICPSR, Retraction Watch)
+c(length(icpsr$DOI[which(!is.na(icpsr$DOI))]) / length(icpsr$DOI),
+  length(retractions$OriginalPaperDOI[which(!is.na(retractions$OriginalPaperDOI))]) /
+    length(retractions$OriginalPaperDOI))
+
+# Duplicate DOIs in retractions?
+retractions |> 
+  drop_na(OriginalPaperDOI) |>
+  add_count(OriginalPaperDOI) |> 
+  filter(n > 1) |>
+  distinct() |>
+  select("Record.ID", "Title", "OriginalPaperDOI", "n") |>
+  nrow()
+
+# Retraction Watch database contains 'duplicate' DOIs - if a paper 
+# was corrected then retracted, there are separate entries for the 
+# correction and the retraction
+
+# pivot_wider before merging?
+
+# How many entries for each type of retraction reason?
+retractions |>
+  drop_na(RetractionNature) |>
+  group_by(RetractionNature) |>
+  summarize(n())
+```
+
+```{r dois-2}
+# Duplicate DOIs in ICPSR?
+
+icpsr |> 
+  drop_na(DOI) |>
+  add_count(DOI) |> 
+  filter(n > 1) |>
+  distinct() |>
+  select("Reference.ID", "Title", "DOI", "n") |>
+  nrow()
+
+# Doesn't look like it! Thank you data librarians :)
+```
+
+```{r dois-3}
+# For entries without DOIs in ICPSR, what type of materials are they
+
+# 'Type.of.Work' unavailable for what proportion of icpsr entries?
+icpsr |>
+  filter(is.na(Type.of.Work)) |>
+  select("Reference.ID", "Title", "DOI", "Type.of.Work") |>
+  nrow() / nrow(icpsr)
+
+# 'Type.of.Work' unavailable for what proportion of icpsr entries
+# that have a DOI?
+icpsr |>
+  filter(is.na(DOI)) |>
+  filter(is.na(Type.of.Work)) |>
+  select("Reference.ID", "Title", "DOI", "Type.of.Work") |>
+  nrow() / nrow(filter(icpsr, is.na(DOI)))
+
+# ... that don't have a DOI?
+icpsr |>
+  filter(!is.na(DOI)) |>
+  filter(is.na(Type.of.Work)) |>
+  select("Reference.ID", "Title", "DOI", "Type.of.Work") |>
+  nrow() / nrow(filter(icpsr, is.na(DOI)))
+```
+
+
+
+
+
