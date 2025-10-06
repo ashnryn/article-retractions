@@ -14,7 +14,7 @@ library(ggplot2)
 sys.source("Preprocessing.R", envir = knitr::knit_global())
 ```
 
-### DOIs available
+### DOIs available?
 
 ```{r dois-1}
 # What proportion of entries in each table have DOIs (ICPSR, Retraction Watch)
@@ -58,30 +58,182 @@ icpsr |>
 # Doesn't look like it! Thank you data librarians :)
 ```
 
-```{r dois-3}
-# For entries without DOIs in ICPSR, what type of materials are they
+\newpage
 
-# 'Type.of.Work' unavailable for what proportion of icpsr entries?
+### Article Types
+
+```{r icpsr-article-type}
+# For entries without DOIs in ICPSR, what type of materials are they?
+
+# 'Type.of.Work' available for what proportion of icpsr entries?
 icpsr |>
-  filter(is.na(Type.of.Work)) |>
+  drop_na(Type.of.Work) |>
   select("Reference.ID", "Title", "DOI", "Type.of.Work") |>
   nrow() / nrow(icpsr)
 
-# 'Type.of.Work' unavailable for what proportion of icpsr entries
+# 'Type.of.Work' available for what proportion of icpsr entries
 # that have a DOI?
 icpsr |>
-  filter(is.na(DOI)) |>
-  filter(is.na(Type.of.Work)) |>
-  select("Reference.ID", "Title", "DOI", "Type.of.Work") |>
+  drop_na(DOI) |>
+  drop_na(Type.of.Work) |>
+  select("Reference.ID", "DOI", "Type.of.Work") |>
   nrow() / nrow(filter(icpsr, is.na(DOI)))
 
 # ... that don't have a DOI?
 icpsr |>
-  filter(!is.na(DOI)) |>
-  filter(is.na(Type.of.Work)) |>
+  filter(is.na(DOI)) |>
+  drop_na(Type.of.Work) |>
   select("Reference.ID", "Title", "DOI", "Type.of.Work") |>
   nrow() / nrow(filter(icpsr, is.na(DOI)))
+
+# 'Type.of.Work' appears to be available for < 10% of entries - 
+# around 5.4% of entries with a DOI and 18.5% of those w/o a DOI
+
+# TODO: fix NA values - diff NA values associated w diff columns
+
+# How many entries associated with each type of work?
+icpsr |>
+  drop_na(Type.of.Work) |>
+  filter(Type.of.Work != "(unknown)") |>
+  group_by(Type.of.Work) |>
+  summarize(count = n()) |>
+  arrange(desc(count))
+
+# Needs to be standardized .. capitalization differences interfering
 ```
+
+```{r rw-article-types}
+# 'ArticleType' unavailable for what proportion of RW entries?
+retractions |>
+  select(Record.ID, ArticleType) |>
+  drop_na(ArticleType) |>
+  nrow()
+
+# ArticleType available for all RW entries, it looks like!
+
+# How many entries associated with each type of work in RW?
+retractions |>
+  select(Record.ID, ArticleType) |>
+  drop_na(ArticleType) |>
+  unnest(c(ArticleType)) |>
+  group_by(ArticleType) |>
+  summarize(count = n()) |>
+  arrange(desc(count))
+
+# These overlap - ArticleType is a list-type column
+```
+
+\newpage
+
+### Publishers
+
+```{r publishers}
+# Publication name available for what proportion of entries?
+
+# Secondary.Title includes publication name if entry is 
+# a journal/newspaper
+icpsr |>
+  select(Reference.ID, Secondary.Title) |>
+  drop_na(Secondary.Title) |>
+  nrow() / nrow(icpsr)
+
+# Now looking at Publisher - contains info on gov't
+# bureaus etc responsible for the publication
+# Approx equivalent to 'Institution' in RW data?
+icpsr |>
+  select(Reference.ID, Publisher) |>
+  drop_na(Publisher) |>
+  nrow() / nrow(icpsr)
+
+# Around 36% of icpsr entries list the publisher
+
+# What about those entries without DOI?
+
+# Secondary.Title
+icpsr |> 
+  filter(is.na(DOI)) |>
+  select(Reference.ID, Secondary.Title) |>
+  drop_na(Secondary.Title) |>
+  nrow() / nrow(filter(icpsr, is.na(DOI)))
+
+# Publisher
+icpsr |> 
+  filter(is.na(DOI)) |>
+  select(Reference.ID, Publisher) |>
+  drop_na(Publisher) |>
+  nrow() / nrow(filter(icpsr, is.na(DOI)))
+
+# Around 64% of entries without a DOI have a publisher listed
+
+# What publications appear frequently in ISPCR?
+
+# Secondary.Title
+icpsr |> 
+  select(Reference.ID, Secondary.Title) |>
+  drop_na(Secondary.Title) |>
+  group_by(Secondary.Title) |>
+  summarize(count = n()) |>
+  arrange(desc(count))
+
+# Publisher
+icpsr |> 
+  select(Reference.ID, Publisher) |>
+  drop_na(Publisher) |>
+  group_by(Publisher) |>
+  summarize(count = n()) |>
+  arrange(desc(count))
+```
+
+```{r publishers-2}
+# Publication name available for what proportion of entries in RW?
+
+# Secondary.Title includes publication name if entry is 
+# a journal/newspaper
+retractions |>
+  select(Record.ID, Journal) |>
+  drop_na(Journal) |>
+  nrow() / nrow(retractions)
+
+# All entries list a 'Journal' - column just holds the source
+# of the article (incl. journals, books, serials, etc)
+
+# What journals are most common in RW?
+
+retractions |> 
+  select(Record.ID, Journal) |>
+  drop_na(Journal) |>
+  unnest(c(Journal)) |>
+  group_by(Journal) |>
+  summarize(count = n()) |>
+  arrange(desc(count))
+```
+
+### Merging
+
+```{r merging}
+# Initial brief attempt at a merge
+
+merged <- inner_join(
+  x = (icpsr %>% 
+         filter(!is.na(DOI)) %>% 
+         select(Reference.ID, Title, DOI) %>% 
+         unnest(c(DOI))),
+  y = (retractions %>% 
+         filter(!is.na(OriginalPaperDOI)) %>% 
+         select(Record.ID, Title, OriginalPaperDOI) %>% 
+         unnest(c(OriginalPaperDOI))),
+  by = join_by(DOI == OriginalPaperDOI)
+)
+
+print(merged)
+
+# Is 5 observations around what we'd expect??
+# Slightly concerning might be a data cleaning problem
+```
+
+
+
+
 
 
 

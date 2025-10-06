@@ -40,7 +40,8 @@ retractions <- retractions %>%
   mutate(across(everything(), ~ lapply(., unlist)))
 
 retractions$RetractionNature = map_chr(retractions$RetractionNature, unlist)
-
+retractions$Journal = map(retractions$Journal, unlist)
+retractions$ArticleType = map(retractions$ArticleType, unlist)
 
 
 
