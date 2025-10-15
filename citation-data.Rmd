@@ -1,0 +1,25 @@
+---
+title: "Citations of Retracted Papers"
+output: pdf_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(readxl)
+library(ggplot2)
+
+sys.source("initial-stats.Rmd", envir = knitr::knit_global())
+```
+
+
+
+
+
+
+
+
+
+
+
+
