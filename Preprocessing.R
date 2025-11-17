@@ -1,3 +1,5 @@
+### Cleaning/reformatting ICPSR, Retraction Watch data
+
 library(dplyr)
 library(tidyr)
 library(stringr)
@@ -156,12 +158,10 @@ retractions$Journal = map(retractions$Journal, unlist)
 retractions$ArticleType = map(retractions$ArticleType, unlist)
 
 # convert RetractionDate, OriginalPaperDate to lubridate Date type
-ret_date_numer = mclapply(retractions$RetractionDate, mdy_hm,
-                                             mc.cores = detectCores())
-pub_date_numer = mclapply(retractions$OriginalPaperDate, mdy_hm,
-                                      mc.cores = detectCores())
+ret_date_numer = mclapply(retractions$RetractionDate, mdy_hm)
+pub_date_numer = mclapply(retractions$OriginalPaperDate, mdy_hm)
 
 # get retraction year, publication year; add to retractions
-retractions$"RetractionYear" <- mclapply(ret_date_numer, year, mc.cores = detectCores())
-retractions$"OriginalPaperYear" <- mclapply(pub_date_numer, year, mc.cores = detectCores())
+retractions$"RetractionYear" <- mclapply(ret_date_numer, year)
+retractions$"OriginalPaperYear" <- mclapply(pub_date_numer, year)
 rm(ret_date_numer, pub_date_numer)
