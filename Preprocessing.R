@@ -9,7 +9,7 @@ library(parallel)
 
 # setwd(...) set working directory to project folder
 
-# parallelize - start
+# for mclapply
 options(mc.cores = parallel::detectCores())
 
 
