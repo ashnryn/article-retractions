@@ -10,6 +10,9 @@ library(parallel)
 # parallelize - start
 options(mc.cores = parallel::detectCores())
 
+
+## ICPSR DATA
+
 # load icpsr data from github
 icpsr = data.frame(read.csv(
   "https://raw.githubusercontent.com/ashnryn/article-retractions/refs/heads/main/icpsr/icpsr_bib.csv", 
@@ -87,6 +90,9 @@ icpsr$"Author.s.list" <- icpsr$Author.s. %>%
 ## convert study numbers, series numbers, year of publication to numeric type
 icpsr$Year.Published <- lapply(icpsr$Year.Published, as.numeric)
 
+
+## RETRACTION WATCH DATA
+
 # load retraction watch data
 retractions = data.frame(read.csv(
   "https://raw.githubusercontent.com/ashnryn/article-retractions/refs/heads/main/retraction-watch/retraction_watch.csv",
@@ -149,20 +155,13 @@ retractions$RetractionNature = map_chr(retractions$RetractionNature, unlist)
 retractions$Journal = map(retractions$Journal, unlist)
 retractions$ArticleType = map(retractions$ArticleType, unlist)
 
+# convert RetractionDate, OriginalPaperDate to lubridate Date type
+ret_date_numer = mclapply(retractions$RetractionDate, mdy_hm,
+                                             mc.cores = detectCores())
+pub_date_numer = mclapply(retractions$OriginalPaperDate, mdy_hm,
+                                      mc.cores = detectCores())
 
-retractions$RetractionDate = mclapply(retractions$RetractionDate, mdy_hm,
-                    mc.cores = detectCores())
-
-nret = nrow(retractions)
-for(i in 1:nret) {
-  # RetractionDate
-  ret_date[i] <- mdy_hm(retractions$RetractionDate[[i]]) %>% ymd()
-  #ret_year[i] <- year(as.Date(ret_date[i]))
-  
-  # OriginalPaperDate
-  pub_date[i] <- mdy_hm(retractions$OriginalPaperDate[[i]]) %>% ymd()
-  #pub_year[i] <- year(as.Date(pub_date[i]))
-}
-
-retractions$"RetractionYear" <- ret_year
-retractions$"OriginalPaperYear" <- pub_year
+# get retraction year, publication year; add to retractions
+retractions$"RetractionYear" <- mclapply(ret_date_numer, year, mc.cores = detectCores())
+retractions$"OriginalPaperYear" <- mclapply(pub_date_numer, year, mc.cores = detectCores())
+rm(ret_date_numer, pub_date_numer)
