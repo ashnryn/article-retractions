@@ -42,13 +42,19 @@ icpsr <- icpsr %>%
   mutate(across(c("Title", "Study.Title.s.") , ~ gsub('(&quot;)', '\"', .)))
 
 # replace 'Anonymous', (author unknown)' with NA. TEMP - replace w/ below once debugged
-icpsr <- icpsr %>% mutate(Author.s. = ifelse(Author.s. %in% c("Anonymous","(author unknown)"), NA, Author.s.))
+# icpsr <- icpsr %>% mutate(Author.s. = ifelse(Author.s. %in% c("Anonymous","(author unknown)"), NA, Author.s.))
 
 
 # tried using regex for prev. TODO: debug
-# icpsr %>%
-# mutate(test = if_else(str_detect(str_to_lower(icpsr$Author.s.), "anonymous|author unknown"), NA, Authors.s.))
+## created new variable "author_fix" -- i would create a final analytic dataset with the variables you want rather than replace the original vars
+icpsr <- icpsr %>%
+mutate(author_fix = if_else(str_detect(str_to_lower(Author.s.), "anonymous|unknown")==T,NA, Author.s.))
 
+
+# chk <- icpsr%>%
+#   filter(str_detect(str_to_lower(Author.s.), "unknown")) #-- code above seems to capture entries with unknown, Unknown, with and w/o author, and with and w/o ()
+
+# anonymous|author unknown
 # Maybes: ENDOWMENT, CORPORATION, SURVEY, MISSION, SECRETARY, LABORATORY,
 # DIRECTORATE, 
 org_author_flags <- c(
