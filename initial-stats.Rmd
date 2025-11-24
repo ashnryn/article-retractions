@@ -63,7 +63,7 @@ icpsr |>
 ### RIS Types
 
 ```{r icpsr-ris-type}
-# Article type found in 'RIS.Type' column, not 'Article.Type'
+# Article type found in 'RIS.Type' column, not 'Article.Type'/'Type.of.Work'
 
 # For entries without DOIs in ICPSR, what type of materials are they?
 
@@ -73,25 +73,9 @@ icpsr |>
   select("Reference.ID", "Title", "DOI", "RIS.Type") |>
   nrow() / nrow(icpsr)
 
-# 'RIS.Type' available for what proportion of icpsr entries
-# that have a DOI?
-icpsr |>
-  drop_na(DOI) |>
-  drop_na(RIS.Type) |>
-  select("Reference.ID", "DOI", "Type.of.Work") |>
-  nrow() / nrow(filter(icpsr, is.na(DOI)))
+any(is.na(icpsr$RIS.Type))
 
-# ... that don't have a DOI?
-icpsr |>
-  filter(is.na(DOI)) |>
-  drop_na(RIS.Type) |>
-  select("Reference.ID", "Title", "DOI", "Type.of.Work") |>
-  nrow() / nrow(filter(icpsr, is.na(DOI)))
-
-# 'Type.of.Work' appears to be available for < 10% of entries - 
-# around 5.4% of entries with a DOI and 18.5% of those w/o a DOI
-
-# TODO: fix NA values - diff NA values associated w diff columns
+# Available for all entries!
 
 # How many entries associated with each type of work?
 icpsr |>
@@ -100,8 +84,6 @@ icpsr |>
   group_by(RIS.Type) |>
   summarize(count = n()) |>
   arrange(desc(count))
-
-# Needs to be standardized .. capitalization differences interfering
 ```
 
 ```{r rw-article-types}
@@ -109,9 +91,9 @@ icpsr |>
 retractions |>
   select(Record.ID, ArticleType) |>
   drop_na(ArticleType) |>
-  nrow()
+  nrow() / nrow(retractions)
 
-# ArticleType available for all RW entries, it looks like!
+# ArticleType available for all RW entries, looks like!
 
 # How many entries associated with each type of work in RW?
 retractions |>
@@ -129,7 +111,9 @@ retractions |>
 
 ### Publishers
 
-```{r publishers}
+Chunk below is set to eval = FALSE, 'Publisher' and 'Secondary.Title' are not included in final version of ICPSR data output from Preprocessing.R.
+
+```{r publishers, eval = FALSE}
 # Publication name available for what proportion of entries?
 
 # Secondary.Title includes publication name if entry is 

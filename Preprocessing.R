@@ -44,17 +44,19 @@ icpsr <- icpsr %>%
 # replace 'Anonymous', (author unknown)' with NA. TEMP - replace w/ below once debugged
 # icpsr <- icpsr %>% mutate(Author.s. = ifelse(Author.s. %in% c("Anonymous","(author unknown)"), NA, Author.s.))
 
-
 # tried using regex for prev. TODO: debug
-## created new variable "author_fix" -- i would create a final analytic dataset with the variables you want rather than replace the original vars
-icpsr <- icpsr %>%
-mutate(author_fix = if_else(str_detect(str_to_lower(Author.s.), "anonymous|unknown")==T,NA, Author.s.))
+## created new variable "author_fix" -- i would create a final analytic dataset with the variables 
+# you want rather than replace the original vars
+icpsr <- icpsr %>% 
+  mutate(author_fix = if_else(str_detect(str_to_lower(Author.s.), "anonymous|unknown")==T,NA, Author.s.))
 
 
 # chk <- icpsr%>%
-#   filter(str_detect(str_to_lower(Author.s.), "unknown")) #-- code above seems to capture entries with unknown, Unknown, with and w/o author, and with and w/o ()
+#   filter(str_detect(str_to_lower(Author.s.), "unknown")) 
+#-- code above seems to capture entries with unknown, Unknown, with and w/o author, and with and w/o ()
 
 # anonymous|author unknown
+
 # Maybes: ENDOWMENT, CORPORATION, SURVEY, MISSION, SECRETARY, LABORATORY,
 # DIRECTORATE, 
 org_author_flags <- c(
@@ -85,18 +87,24 @@ get_author_names <- function(str) {
       str_extract_all("(^[^,]+)|(;{1} [^,]+)", simplify = TRUE) %>%
       lapply(str_extract_all, "[A-Za-z]+", simplify = TRUE) %>%
       unlist() %>%
-      sort()
+      sort() %>%
+      paste(., collapse = ';') %>%
+      toString()
     return(vec_out)
   }
 }
 
 # reformat author name/columns - pull out surname,
 # add column for list of author surnames
-icpsr$"Author.s.list" <- icpsr$Author.s. %>% 
-  mclapply(get_author_names, mc.cores = detectCores())
+icpsr$"Author.s.list" <- icpsr$author_fix %>% 
+  mclapply(get_author_names, mc.cores = detectCores()) %>%
+  as.character()
 
-## convert study numbers, series numbers, year of publication to numeric type
-icpsr$Year.Published <- lapply(icpsr$Year.Published, as.numeric)
+# drop author_fix columns
+icpsr <- subset(icpsr, select = -c(author_fix))
+
+# write modified icpsr dataset to CSV
+write_csv(icpsr, "icpsr_final.csv")
 
 
 ## RETRACTION WATCH DATA
@@ -142,13 +150,16 @@ get_author_names_2 <- function(str) {
   else if (sjmisc::str_contains(str, org_author_flags, ignore.case = TRUE, logic = "OR")) {
     return(str)
   }
-  # else, extract author surnames only, return as sorted vector
+  # else, extract author surnames only, return as sorted semicolon-
+  # separated list
   else {
     vec_out <- str %>%
       str_extract_all("([^ ;]+)(?=[;\n])", simplify = TRUE) %>%
       lapply(str_extract_all, "[A-Za-z]+", simplify = TRUE) %>%
       unlist() %>%
-      sort()
+      sort() %>%
+      paste(., collapse = ';') %>%
+      toString()
     return(vec_out)
   }
 }
@@ -156,18 +167,18 @@ get_author_names_2 <- function(str) {
 # reformat author name/columns - pull out surname,
 # add column for list of author surnames
 retractions$Author.List <- retractions$Author %>% 
-  mclapply(get_author_names_2, mc.cores = detectCores())
-
-# unlist list type columns
-retractions$RetractionNature = map_chr(retractions$RetractionNature, unlist)
-retractions$Journal = map(retractions$Journal, unlist)
-retractions$ArticleType = map(retractions$ArticleType, unlist)
+  mclapply(get_author_names_2, mc.cores = detectCores()) %>%
+  as.character()
 
 # convert RetractionDate, OriginalPaperDate to lubridate Date type
 ret_date_numer = mclapply(retractions$RetractionDate, mdy_hm)
 pub_date_numer = mclapply(retractions$OriginalPaperDate, mdy_hm)
 
 # get retraction year, publication year; add to retractions
-retractions$"RetractionYear" <- mclapply(ret_date_numer, year)
-retractions$"OriginalPaperYear" <- mclapply(pub_date_numer, year)
+retractions$"RetractionYear" <- mclapply(ret_date_numer, year) %>% as.integer()
+retractions$"OriginalPaperYear" <- mclapply(pub_date_numer, year) %>% as.integer()
 rm(ret_date_numer, pub_date_numer)
+
+# write to CSV
+write_csv(retractions, "rw_final.csv")
+

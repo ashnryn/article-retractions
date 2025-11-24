@@ -1,15 +1,26 @@
-### Merging
+### Merging ICPSR and Retraction Watch datasets
+### ICPSR and RW datasets used here are modified/processed
+### in Preprocessing.R
+
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+
+# setwd(...)
+
+# load data
+icpsr <- read_csv("icpsr_final.csv")
+retractions <- read_csv("rw_final.csv")
 
 # Initial brief attempt at a merge
-
 merged <- inner_join(
   x = (icpsr %>% 
          filter(!is.na(DOI)) %>% 
-         select(Reference.ID, Title, DOI) %>% 
+         select(Title, Author.s.list, DOI, Year.Published) %>% 
          unnest(c(DOI))),
   y = (retractions %>% 
          filter(!is.na(OriginalPaperDOI)) %>% 
-         select(Record.ID, Title, OriginalPaperDOI, RetractionDate, RetractionNature, Reason) %>% 
+         select(Author.List, RetractionYear, OriginalPaperDOI, RetractionNature, Reason) %>% 
          unnest(c(OriginalPaperDOI))),
   by = join_by(DOI == OriginalPaperDOI)
 )
@@ -18,21 +29,32 @@ merged <- inner_join(
 # remove duplicate row from merged
 merged = merged[c(1:4, 6:9),]
 
-# write csv for use in citation_data, etc
-write_csv(merged, "merged.csv", )
+## Fuzzy Matching
 
-## fuzzy matching
 # drop all ICPSR entries with DOIs, as we already checked for matches using DOI.
+icpsr_fuzz <- icpsr |> filter(is.na(DOI))
 
-icpsr = icpsr |> filter(is.na(DOI))
-
+# merge based on title, publication year
 merged_fuzzy <- inner_join(
-  x = (icpsr %>%
-         select(Reference.ID, Title, Author.s., Year.Published)),
+  x = (icpsr_fuzz %>%
+         select(Title, Author.s.list, DOI, Year.Published)),
   y = (retractions %>% 
-         select(Record.ID, Title, Author, RetractionYear, OriginalPaperYear, RetractionNature, Reason) %>%
+         select(Title, Author.List, RetractionYear, OriginalPaperYear, RetractionNature, Reason) %>%
          unnest(Title)),
   by = join_by(Title == Title, Year.Published == OriginalPaperYear),
   multiple = "all"
 )
+
+# append merged_fuzzy to merged
+merged <- rbind(merged, merged_fuzzy)
+rm(merged_fuzzy, icpsr_fuzz)
+
+# write csv for use in citation_data, etc
+write_csv(merged, "merged.csv", )
+
+
+
+
+
+
 
