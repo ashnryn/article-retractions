@@ -74,7 +74,7 @@ org_author_flags <- c(
 # checks for bureau flag strings
 get_author_names <- function(str) {
   # if na, return str
-  if (is.na(str)) { return(str) }
+  if (is.na(str)) { return(NA) }
   # if the author is an organization, return str
   else if (sjmisc::str_contains(str, org_author_flags, ignore.case = TRUE, logic = "OR")) {
     return(str)
