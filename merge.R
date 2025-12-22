@@ -9,8 +9,8 @@ library(lubridate)
 # setwd(...)
 
 # load data
-icpsr <- read_csv("icpsr_final.csv")
-retractions <- read_csv("rw_final.csv")
+icpsr <- read_csv("icpsr/icpsr_final.csv")
+retractions <- read_csv("retraction-watch/rw_final.csv")
 
 # Initial brief attempt at a merge
 merged <- inner_join(

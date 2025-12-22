@@ -41,21 +41,10 @@ icpsr <- icpsr %>%
 icpsr <- icpsr %>% 
   mutate(across(c("Title", "Study.Title.s.") , ~ gsub('(&quot;)', '\"', .)))
 
-# replace 'Anonymous', (author unknown)' with NA. TEMP - replace w/ below once debugged
-# icpsr <- icpsr %>% mutate(Author.s. = ifelse(Author.s. %in% c("Anonymous","(author unknown)"), NA, Author.s.))
-
-# tried using regex for prev. TODO: debug
-## created new variable "author_fix" -- i would create a final analytic dataset with the variables 
-# you want rather than replace the original vars
+# replace 'Anonymous', (author unknown)' with NA
+# created new variable "author_fix" to hold modified author strings
 icpsr <- icpsr %>% 
   mutate(author_fix = if_else(str_detect(str_to_lower(Author.s.), "anonymous|unknown")==T,NA, Author.s.))
-
-
-# chk <- icpsr%>%
-#   filter(str_detect(str_to_lower(Author.s.), "unknown")) 
-#-- code above seems to capture entries with unknown, Unknown, with and w/o author, and with and w/o ()
-
-# anonymous|author unknown
 
 # Maybes: ENDOWMENT, CORPORATION, SURVEY, MISSION, SECRETARY, LABORATORY,
 # DIRECTORATE, 
@@ -73,6 +62,7 @@ org_author_flags <- c(
 )
 
 # function to break string into vector of author surnames
+# set up for [LASTNAME, FIRSTNAME, INITIAL] format
 # checks for bureau flag strings
 get_author_names <- function(str) {
   # if na, return str
@@ -104,7 +94,7 @@ icpsr$"Author.s.list" <- icpsr$author_fix %>%
 icpsr <- subset(icpsr, select = -c(author_fix))
 
 # write modified icpsr dataset to CSV
-write_csv(icpsr, "icpsr_final.csv")
+write_csv(icpsr, "icpsr/icpsr_final.csv")
 
 
 ## RETRACTION WATCH DATA
@@ -180,5 +170,5 @@ retractions$"OriginalPaperYear" <- mclapply(pub_date_numer, year) %>% as.integer
 rm(ret_date_numer, pub_date_numer)
 
 # write to CSV
-write_csv(retractions, "rw_final.csv")
+write_csv(retractions, "retraction-watch/rw_final.csv")
 

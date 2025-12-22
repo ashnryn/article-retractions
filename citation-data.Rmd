@@ -1,202 +1,58 @@
 ---
-title: "Citations of Retracted Papers"
+title: "Citations of Retracted ICPSR Papers"
 output: pdf_document
 ---
 
 ```{r setup, include = FALSE}
+library(tidyverse)
+library(parallel)
+library(lubridate)
+
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyr)
-library(readxl)
-library(ggplot2)
-library(citationchaser)
-
 # setwd(...)
 
-sys.source("initial-stats.R", envir = knitr::knit_global())
+# load data
+merged <- read_csv("merged.csv")
+refs <- read_csv("citations/refs_merged.csv")
 ```
 
-## Citation Data
-
-Change date strings to lubridate Date type
-```{r handle-dates}
-make_date = function(str) {
-  # month, day, year format
-  # day may or may not be included
-  date_strs = unlist(strsplit(str, " "))
-  
-  # account for date ranges
-  # TEMP - if a range is given, take the earliest given date
-  if (str_length(date_strs[1]) > 3) {
-    date_strs[1] <- strsplit(date_strs[1], "-")[[1]][1]
-  } 
-  if (str_length(date_strs[length(date_strs)]) > 4) {
-    date_strs[length(date_strs)] <- 
-      strsplit(date_strs[length(date_strs)], "-")[[1]][1]
-  }
-  if(length(date_strs) > 2 & str_length(date_strs[2]) > 2) {
-    date_strs[2] <- strsplit(date_strs[2], "-")[[1]][1]
-  }
-  
-  # QUESTION: What to do if day of publication is not provided?
-  date_nums = c(
-    # year
-    as.character(date_strs[length(date_strs)]),
-    # month
-    as.character(which(date_strs[1] == str_to_upper(month.abb))),
-    # day
-    # TEMP FIX - use the first of the month if no day provided
-    ifelse(length(date_strs) > 2, as.character(date_strs[2]), "1")
-  )
-  
-  return(ymd(paste0(date_nums[1], "-", date_nums[2], "-", date_nums[3])))
-}
-```
-
-```{r import-tables}
-# read data - drop leading 10 rows
-# drop citations by year data - will reconstru
-process.tbl <- function(filename) {
-  df <- read.csv(filename, skip = 10)
-  df <- subset(df, select = c(1:21))
-  df |> group_by(Publication.Year) |>
-    summarise(Num.Citations = n()) -> cit_per_year
-  return(cit_per_year)
-}
-
-# order corresponds to order of rows in merged
-tblnames = c("citation-reports/WorldsApart.csv",
-             "citation-reports/NonmetroRole.csv",
-             "citation-reports/SchoolSocialBonds.csv",
-             "citation-reports/SuicideNatDisasters.csv",
-             "citation-reports/ECigUse.csv", 
-             "citation-reports/HowDidTheyDecide.csv",
-             "citation-reports/MarijuanaUse.csv",
-             "citation-reports/TurningIn.csv"
-             )
-```
-
-
-```{r citation-data, tidy = TRUE, tidy.opts = list(width.cutoff = 80), warning = FALSE}
-
-# set console width
-options(width = 80)
-
-get.proportions = function(filename) {
-  # load in table
-  tbl = process.tbl(filename)
-  
-  # get retraction year
-  ix = which(tblnames == filename)
-  mdy_hm(merged$RetractionDate[[ix]]) |> 
-    year() -> ret_year
-  
-  # number of citations pre- and post- retraction
-  # excludes citations from the same year - more work needed to try to use
-  # day/month for comparison
-  pre_ret = (sum(tbl$Num.Citations[which(tbl$Publication.Year < ret_year)]) / 
-               sum(tbl$Num.Citations))
-  same_year = (sum(tbl$Num.Citations[which(tbl$Publication.Year == ret_year)]) / 
-               sum(tbl$Num.Citations))
-  post_ret = (sum(tbl$Num.Citations[which(tbl$Publication.Year > ret_year)]) / 
-                sum(tbl$Num.Citations))
-  
-  return(c(pre_ret, post_ret))
-}
-
-# plot citations over time
-plot.citations = function(filename) {
-  tbl = process.tbl(filename)
-  mdy_hm(merged$RetractionDate[[ix]]) |> 
-    year() -> ret_year
-  
-  # get xlim for plot - make sure retraction
-  # year is included
-  min_x = min(
-    ret_year,
-    min(tbl$Publication.Year)
-  )
-  max_x = max(
-    ret_year,
-    max(tbl$Publication.Year)
-  )
-  
-  plot(x = process.tbl(tblnames[ix])$Publication.Year,
-       y = process.tbl(tblnames[ix])$Num.Citations,
-       type = 'o', pch = 20,
-       main = strwrap(paste0("Citations of ", '\"',
-                             merged$Title.x[ix], '\"'),
-                      width = 50),
-       xlab = "Publication Year",
-       ylab = "Number of Citations",
-       xlim = c(min_x, max_x)
-      )
-  abline(v = mdy_hm(merged$RetractionDate[[ix]]) %>% year(), 
-         lwd = 2, col = "red")
-  
-  cplot = recordPlot()
-    
-  return(cplot)
-}
-
-# setwd(...)
-
-for (ix in 1:length(merged)) {
-  # print proportion of citations from before, 
-  # after retraction year
-  prop_citations = get.proportions(tblnames[ix])
-  print(strwrap(merged$Title.x[ix], width = getOption("width")))
-  cat("Pre-retraction:", prop_citations[1],
-      "Same year", prop_citations[2],
-      ", Post-retraction", prop_citations[3], "\n",
-      fill = FALSE)
-  
-  # plot citations
-  print(plot.citations(tblnames[ix]))
-}
-```
-
-## Citation Chaser
-
-Get citations for each paper in merged:
+Number of citations:
 
 ```{r}
-get.citations = function(title, doi) {
-  # get citations from Lens
-  citations = get_refs(doi, type = 'doi', get_records = 'citations',
-                       token = 'nW8D5IbKnsJ3uP8pdMuFKmw7RMEJ3nZU7LAeKrnyIjIGY3RmY3qC')[['df']]
-  
-  # keep only Lens ID, title, 
-  citations = citations |> select(data.lens_id,
-                                  data.title, 
-                                  data.publication_type,
-                                  data.year_published,
-                                  data.authors)
-  
-  # add retracted paper title
-  citations = mutate(citations, cited_paper = title)
-  return(citations)
-}
+# number of citations per paper
+refs |> group_by(filepath) |> count()
+
+# add retraction years to refs
+refs$ret.year <- numeric(length = nrow(refs))
+refs$ret.year[which(refs$filepath == "ECigUse")] <- merged$RetractionYear[5]
+refs$ret.year[which(refs$filepath == "HowDidTheyDecide")] <- merged$RetractionYear[6]
+refs$ret.year[which(refs$filepath == "HypertensionGuidelines")] <- merged$RetractionYear[9]
+refs$ret.year[which(refs$filepath == "MarijuanaUse")] <- merged$RetractionYear[7]
+refs$ret.year[which(refs$filepath == "NonmetroRole")] <- merged$RetractionYear[2]
+refs$ret.year[which(refs$filepath == "SchoolSocialBonds")] <- merged$RetractionYear[3]
+refs$ret.year[which(refs$filepath == "SuicideNatDisasters")] <- merged$RetractionYear[4]
+refs$ret.year[which(refs$filepath == "TurningIn")] <- merged$RetractionYear[8]
+refs$ret.year[which(refs$filepath == "WorldsApart")] <- merged$RetractionYear[1]
+
+# number of citations per paper by year
+refsbyyear <- refs |> group_by(filepath, year, ret.year) |>
+  summarise(num_citations = n())
+(head(refsbyyear, 20))
 ```
 
+
+Plots of citations by year. Retraction Year in red.
 ```{r}
-citations = get.citations(merged$Title.x[1], merged$DOI[1])
-
-tbl2 = get.citations(title = merged$Title.x[2], doi = merged$DOI[2])
-citations = full_join(citations, tbl2)
-
+# plot citations by year
+refsbyyear |> 
+  group_by(filepath) |>
+  ggplot(aes(x = year, y = num_citations)) +
+    geom_line() +
+    geom_vline(aes(xintercept = ret.year), colour = "red") +
+    xlim(1990, 2030) +
+    facet_wrap(~filepath)
 
 ```
-
-
-
-
-
-
-
-
-
-
-
 
 
 
