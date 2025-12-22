@@ -54,5 +54,12 @@ refsbyyear |>
 
 ```
 
+Summary table - number of citations before and after retraction year:
+
+```{r}
+refsbyyear |> group_by(filepath, year <= ret.year) |>
+  count()
+```
+
 
 
