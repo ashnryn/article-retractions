@@ -1,4 +1,6 @@
 #### Data cleaning for citation reports from WOS, Scopus
+#### WOS data pulled 14 October 2025
+#### Scopus data downloaded 19 December 2025
 
 library(tidyverse)
 library(parallel)
