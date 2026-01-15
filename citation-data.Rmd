@@ -50,6 +50,7 @@ refsbyyear |>
     geom_line() +
     geom_vline(aes(xintercept = ret.year), colour = "red") +
     xlim(1990, 2030) +
+    ylim(0, 50) +
     facet_wrap(~filepath)
 
 ```
@@ -60,6 +61,21 @@ Summary table - number of citations before and after retraction year:
 refsbyyear |> group_by(filepath, year <= ret.year) |>
   count()
 ```
+
+Flag whether a retracted article was cited the same year it was retracted:
+
+```{r}
+# create flag
+refs <- refs |> mutate(ref.same.year = (year == ret.year))
+
+# number citing papers retracted during the publication year
+refs |> group_by(ref.same.year) |> summarise(n())
+
+# number with available publication date
+refs |> group_by(ref.same.year, !is.na(pub.date)) |> summarise(n())
+```
+
+
 
 
 

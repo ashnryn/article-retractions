@@ -115,10 +115,12 @@ refs_merged$source <- ifelse(!is.na(refs_merged$`Source Title`),
                              refs_merged$`Source title`) %>%
   toupper()
 
-# consolidate Publication Year (WOS) and Year (Scopus)
-refs_merged$year <- ifelse(!is.na(refs_merged$`Publication Year`),
-                           refs_merged$`Publication Year`,
-                           refs_merged$Year)
+# consolidate pub.year (WOS) and pub.year (Scopus)
+refs_merged$pub.year.x[which(refs_merged$pub.year.x == "NULL")] <- NA
+refs_merged$pub.year.y[which(refs_merged$pub.year.y == "NULL")] <- NA
+refs_merged$year <- ifelse(is.na(refs_merged$pub.year.x),
+                           refs_merged$pub.year.y,
+                           refs_merged$pub.year.x)
 
 # consolidate Total Citations (WOS) and Cited by (Scopus)
 refs_merged$cited.by <- ifelse(!is.na(refs_merged$`Total Citations`),
@@ -139,9 +141,6 @@ refs_merged <- refs_merged %>% subset(
 
 
 
-
-
-
 #### FUZZY MATCHING ####
 
 # for entries without DOI
@@ -157,11 +156,6 @@ refs_merged_fuzzy$source <- ifelse(!is.na(refs_merged_fuzzy$`Source Title`),
                                    refs_merged_fuzzy$`Source Title`,
                                    refs_merged_fuzzy$`Source title`)
 
-# consolidate Publication Year, Year
-refs_merged_fuzzy$year <- ifelse(!is.na(refs_merged_fuzzy$`Publication Year`),
-                                   refs_merged_fuzzy$`Publication Year`,
-                                   refs_merged_fuzzy$Year)
-
 # consolidate DOI columns
 refs_merged_fuzzy$doi <- ifelse(!is.na(refs_merged_fuzzy$DOI.x),
                                 refs_merged_fuzzy$DOI.x,
@@ -172,19 +166,19 @@ refs_merged_fuzzy$cited.by <- ifelse(!is.na(refs_merged_fuzzy$`Total Citations`)
                                      refs_merged_fuzzy$`Total Citations`,
                                      refs_merged_fuzzy$`Cited by`)
 
-# rename Title to title, Publication Date to pub.date
-colnames(refs_merged_fuzzy)[c(2, 6)] <- c("title", "pub.date")
+# rename Title to title, Publication Date to pub.date, pub.year to year
+colnames(refs_merged_fuzzy)[c(2, 6, 10)] <- c("title", "pub.date", "year")
 
 # drop duplicate columns
 refs_merged_fuzzy <- refs_merged_fuzzy %>% subset(
   select = c('filepath', 'title', 'authors.list', 'source', 'pub.date', 'year', 'doi', 'cited.by')
-)
+) %>% as.data.frame()
 
 # append fuzzy matches to DOI matches
-refs_merged <- bind_rows(refs_merged, refs_merged_fuzzy)
+refs_merged <- rbind(refs_merged, refs_merged_fuzzy)
 
-# change type for write_csv
-refs_merged$filepath <- refs_merged$filepath %>% as.character()
+# unnest/unlist filepath, year, for write_csv
+refs_merged <- unnest(refs_merged, cols = c(filepath, year))
 
 # write to CSV
 write_csv(refs_merged, "citations/refs_merged.csv")
