@@ -19,20 +19,56 @@ refs <- read_csv("citations/refs_merged.csv")
 Number of citations:
 
 ```{r}
-# number of citations per paper
-refs |> group_by(filepath) |> count()
+# add file id column to merged - TODO: move to dc/preprocessing file?
+merged <- merged |> mutate(file.id = NA, .before = Title)
+
+merged$file.id[which(merged$Title == 
+  "Worlds Apart? The Reception of Genetically Modified Foods in Europe and the U.S."
+  )] = "WorldsApart"
+merged$file.id[which(merged$Title == 
+  "Nonmetropolitan sex-role ideologies: A longitudinal study"
+  )] = "NonmetroRole"
+merged$file.id[which(merged$Title ==
+  "School social bonds, school climate, and school misbehavior: A multilevel analysis"
+  )] = "SchoolSocialBonds"
+merged$file.id[which(merged$Title ==
+  "Suicide after natural disasters"
+  )] = "SuicideNatDisasters"
+
+merged$file.id[which(merged$Title ==
+  "Electronic cigarette use and myocardial infarction among adults in the US Population Assessment of Tobacco and Health"
+  )] = "ECigUse"
+merged$file.id[which(merged$Title ==
+  "The verdict is in: How did they decide? Using drivers' self-reported data to understand officers' decision making during traffic stop encounters"
+  )] = "HowDidTheyDecide"
+merged$file.id[which(merged$Title ==
+  "Chronic adolescent marijuana use as a risk factor for physical and mental health problems in young adult men"
+  )] = "MarijuanaUse"
+merged$file.id[which(merged$Title ==
+  "Tuning in, not turning out: Evaluating the impact of ethnic television on political participation"
+  )] = "TurningIn"
+merged$file.id[which(merged$Title ==
+  "Implications of new hypertension guidelines in the United States"
+  )] = "HypertensionGuidelines"
+
+# add retraction dates to refs
+refs <- refs |> mutate(ret.date = NA, .after = year)
+
+for (r in 1:nrow(refs)) {
+  ix = which(refs$filepath[r] == merged$file.id)
+  refs$ret.date[r] = merged$RetractionDate[ix]
+}
 
 # add retraction years to refs
-refs$ret.year <- numeric(length = nrow(refs))
-refs$ret.year[which(refs$filepath == "ECigUse")] <- merged$RetractionYear[5]
-refs$ret.year[which(refs$filepath == "HowDidTheyDecide")] <- merged$RetractionYear[6]
-refs$ret.year[which(refs$filepath == "HypertensionGuidelines")] <- merged$RetractionYear[9]
-refs$ret.year[which(refs$filepath == "MarijuanaUse")] <- merged$RetractionYear[7]
-refs$ret.year[which(refs$filepath == "NonmetroRole")] <- merged$RetractionYear[2]
-refs$ret.year[which(refs$filepath == "SchoolSocialBonds")] <- merged$RetractionYear[3]
-refs$ret.year[which(refs$filepath == "SuicideNatDisasters")] <- merged$RetractionYear[4]
-refs$ret.year[which(refs$filepath == "TurningIn")] <- merged$RetractionYear[8]
-refs$ret.year[which(refs$filepath == "WorldsApart")] <- merged$RetractionYear[1]
+refs <- refs |> mutate(ret.year = NA, .after = ret.date)
+
+for (r in 1:nrow(refs)) {
+  ix = which(refs$filepath[r] == merged$file.id)
+  refs$ret.year[r] = merged$RetractionYear[ix]
+}
+
+# number of citations per paper
+refs |> group_by(filepath) |> count()
 
 # number of citations per paper by year
 refsbyyear <- refs |> group_by(filepath, year, ret.year) |>
@@ -74,6 +110,157 @@ refs |> group_by(ref.same.year) |> summarise(n())
 # number with available publication date
 refs |> group_by(ref.same.year, !is.na(pub.date)) |> summarise(n())
 ```
+
+Pulling citation data manually for retractions for which `ret.same.year == TRUE`:
+
+```{r}
+# setwd(...)
+
+# refs |> filter(ref.same.year == TRUE) |>
+#   select(title, authors.list, year, pub.date, doi) |>
+#   write.csv(file = "refs_same_year.csv")
+
+# manually pull and add dates to sheet, export to CSV
+
+# Searched on WOS and Scopus. Could typically find data on WOS 
+# directly, on Scopus, viewed article page on Publisher
+# website or on Proquest/SagePub/EBSCOHost through UM library
+```
+
+Manually downloaded data:
+
+```{r}
+# read edited file into new df
+refs_manual <- read.csv("refs_same_year_final.csv")
+
+refs <- refs |> mutate(across(c(pub.year, pub.month), as.numeric))
+```
+
+
+Reformat pub.date
+
+```{r}
+month.names <- c(
+  'JAN' = 1,
+  'FEB' = 2,
+  'MAR' = 3,
+  'APR' = 4,
+  'MAY' = 5,
+  'JUN' = 6,
+  'JUL' = 7,
+  'AUG' = 8,
+  'SEP' = 9,
+  'OCT' = 10,
+  'NOV' = 11,
+  'DEC' = 12
+)
+
+get.date <- function(datestr) {
+  # split into vector of (MONTH, [DAY], YEAR)
+  datevec = str_split(datestr, pattern = '\\s') |> unlist()
+  
+  # convert year, month to numeric
+  # check for date, if yes, convert to numeric
+  year = datevec[length(datevec)]
+  month = month.names[datevec[1]] |> unname()
+  day = ifelse(length(datevec) > 2, datevec[2], NA)
+  
+  return(c(year, month, day))
+}
+
+refs$pub.year = numeric(nrow(refs))
+refs$pub.month = numeric(nrow(refs))
+refs$pub.day = numeric(nrow(refs))
+
+for (r in 1:nrow(refs)) {
+  # if pub.date data is provided, use get.date function
+  if (!is.na(refs$pub.date[r])) {
+    datevec = get.date(refs$pub.date[r])
+    refs$pub.year[r] = datevec[1]
+    refs$pub.month[r] = datevec[2]
+    refs$pub.day[r] = datevec[3]
+  }
+  # if pub.date is not provided, use manually pulled data if available
+  else {
+    # check if doi is available
+    if (!is.na(refs$doi[r])) {
+      ix = which(refs$doi[r] == refs_manual$doi)
+    }
+    # else compare titles, publication years for match
+    else {
+      ix = which((refs$title[r] == refs_manual$title) &
+                   (refs$year[r] == refs_manual$year))
+    }
+    
+    # check whether replacement exists
+    if (length(ix) == 0) {
+      # if not, insert NAs
+      refs$pub.year[r] = NA
+      refs$pub.month[r] = NA
+      refs$pub.day[r] = NA
+    }
+    # if so, replace
+    else {
+      refs$pub.year[r] = refs_manual$pub.year.manual[ix]
+      refs$pub.month[r] = refs_manual$pub.month.manual[ix]
+      refs$pub.day[r] = refs_manual$pub.date.manual[ix]
+    }
+  }
+}
+```
+
+Flag if month AND year of ref publication are same as retraction month and year
+
+```{r}
+# add retraction months to refs
+refs <- refs |> mutate(
+  ret.month = mdy_hm(ret.date) %>% month(),
+  .after = ret.year
+)
+
+# add retraction date specifically to refs
+refs <- refs |> mutate(
+  ret.day = mdy_hm(ret.date) %>% mday(),
+  .after = ret.month
+)
+
+refs <- refs |> mutate(
+  ref.same.month = ((pub.year == ret.year) & (pub.month == ret.month))
+)
+
+# number citing papers retracted during the publication month
+refs |> group_by(ref.same.month) |> summarise(n())
+```
+
+More granular before/after retraction counts - only 3 refs published in retraction year for which no month could be obtained
+
+```{r}
+# construct pub.after.ret
+refs <- refs |> mutate(pub.after.ret = NA)
+
+for (r in 1:nrow(refs)) {
+  if (refs$year[r] > refs$ret.year[r]) {
+    refs$pub.after.ret[r] = TRUE
+  }
+  else if (refs$year[r] == refs$ret.year[r]) {
+    if (any(is.na(c(refs$pub.month[r], refs$ret.month[r])))) {
+      refs$pub.after.ret[r] = NA
+    }
+    else if (refs$pub.month[r] > refs$ret.month[r]) {
+      refs$pub.after.ret[r] = TRUE
+    }
+    else {
+      refs$pub.after.ret[r] = FALSE
+    }
+  }
+  else {
+    refs$pub.after.ret[r] = FALSE
+  }
+}
+
+refs |> group_by(filepath, pub.after.ret) |> count()
+```
+
 
 
 

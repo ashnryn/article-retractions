@@ -11,7 +11,8 @@ library(tidyverse)
 library(ggplot2)
 library(lubridate)
 
-sys.source("Preprocessing.R", envir = knitr::knit_global())
+icpsr <- read.csv("icpsr/icpsr_final.csv")
+retractions <- read.csv("retraction-watch/rw_final.csv")
 ```
 
 ### DOIs available?

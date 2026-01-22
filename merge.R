@@ -16,18 +16,19 @@ retractions <- read_csv("retraction-watch/rw_final.csv")
 merged <- inner_join(
   x = (icpsr %>% 
          filter(!is.na(DOI)) %>% 
-         select(Title, Author.s.list, DOI, Year.Published) %>% 
+         select(Title, Author.s.list, DOI, Year.Published, Date.Published) %>% 
          unnest(c(DOI))),
   y = (retractions %>% 
          filter(!is.na(OriginalPaperDOI)) %>% 
-         select(Author.List, RetractionYear, OriginalPaperDOI, RetractionNature, Reason) %>% 
+         select(Author.List, RetractionYear, RetractionDate, OriginalPaperDOI, 
+                RetractionNature, Reason) %>% 
          unnest(c(OriginalPaperDOI))),
   by = join_by(DOI == OriginalPaperDOI)
 )
 
 # returns 9 observations - one duplicate
 # remove duplicate row from merged
-merged = merged[c(1:4, 6:9),]
+merged = merged[-c(5),]
 
 ## Fuzzy Matching
 
@@ -37,9 +38,10 @@ icpsr_fuzz <- icpsr |> filter(is.na(DOI))
 # merge based on title, publication year
 merged_fuzzy <- inner_join(
   x = (icpsr_fuzz %>%
-         select(Title, Author.s.list, DOI, Year.Published)),
+         select(Title, Author.s.list, DOI, Year.Published, Date.Published)),
   y = (retractions %>% 
-         select(Title, Author.List, RetractionYear, OriginalPaperYear, RetractionNature, Reason) %>%
+         select(Title, Author.List, RetractionYear, RetractionDate, OriginalPaperYear, 
+                RetractionNature, Reason) %>%
          unnest(Title)),
   by = join_by(Title == Title, Year.Published == OriginalPaperYear),
   multiple = "all"
@@ -49,8 +51,10 @@ merged_fuzzy <- inner_join(
 merged <- rbind(merged, merged_fuzzy)
 rm(merged_fuzzy, icpsr_fuzz)
 
+# setwd(...)
+
 # write csv for use in citation_data, etc
-write_csv(merged, "merged.csv", )
+write_csv(merged, "merged.csv")
 
 
 
