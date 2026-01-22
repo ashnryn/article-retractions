@@ -132,8 +132,6 @@ Manually downloaded data:
 ```{r}
 # read edited file into new df
 refs_manual <- read.csv("refs_same_year_final.csv")
-
-refs <- refs |> mutate(across(c(pub.year, pub.month), as.numeric))
 ```
 
 
@@ -232,7 +230,7 @@ refs <- refs |> mutate(
 refs |> group_by(ref.same.month) |> summarise(n())
 ```
 
-More granular before/after retraction counts - only 3 refs published in retraction year for which no month could be obtained
+More granular before/after retraction counts - only 3 refs published in retraction year for which no month could be obtained (1 publication citing "Suicide after natural disasters...", 2 citing "Worlds Apart? ...")
 
 ```{r}
 # construct pub.after.ret
