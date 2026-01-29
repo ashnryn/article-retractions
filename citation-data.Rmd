@@ -247,7 +247,7 @@ refs |> group_by(filepath, pub.year.norm) |>
     xlab("Years pre- or post-retraction") +
     ylab("Total annual citations") +
     theme(legend.title = "Paper ID") +
-    theme_linedraw()
+    theme_minimal()
 ```
 
 Bubble plot:
@@ -258,6 +258,7 @@ refs |> group_by(filepath, year, pub.year.norm) |>
   ggplot(aes(x = year, y = pub.year.norm, size = n, colour = filepath)) +
     geom_point(alpha = 0.6) +
     labs(x = "Year", y = "Years pre- or post-retraction",
-         size = "Number of citations", colour = "Paper ID")
+         size = "Number of citations", colour = "Paper ID") +
+    theme_minimal()
 ```
 
