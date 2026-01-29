@@ -267,6 +267,7 @@ refs |> group_by(filepath, year, pub.year.norm) |>
 Area chart:
 
 ```{r}
+# color palette: spectral
 refs |> group_by(filepath, year, pub.year.norm) |>
   count() |>
   ggplot(aes(x = pub.year.norm, y = n, fill = filepath)) +
@@ -275,8 +276,16 @@ refs |> group_by(filepath, year, pub.year.norm) |>
   labs(x = "Years pre- or post-retraction",
        y = "Total citations",
        fill = "Paper ID")
-  
 
+# color palette: Purple/green
+refs |> group_by(filepath, year, pub.year.norm) |>
+  count() |>
+  ggplot(aes(x = pub.year.norm, y = n, fill = filepath)) +
+  geom_area() +
+  scale_fill_brewer(palette = "Greens") +
+  labs(x = "Years pre- or post-retraction",
+       y = "Total citations",
+       fill = "Paper ID")
 ```
 
 
