@@ -34,7 +34,6 @@ merged$file.id[which(merged$Title ==
 merged$file.id[which(merged$Title ==
   "Suicide after natural disasters"
   )] = "SuicideNatDisasters"
-
 merged$file.id[which(merged$Title ==
   "Electronic cigarette use and myocardial infarction among adults in the US Population Assessment of Tobacco and Health"
   )] = "ECigUse"
@@ -222,45 +221,43 @@ refs <- refs |> mutate(
   .after = ret.month
 )
 
-refs <- refs |> mutate(
-  ref.same.month = ((pub.year == ret.year) & (pub.month == ret.month))
-)
-
 # number citing papers retracted during the publication month
-refs |> group_by(ref.same.month) |> summarise(n())
+refs |> group_by((year == ret.year) & (pub.month == ret.month)) |> summarise(n())
 ```
 
 More granular before/after retraction counts - only 3 refs published in retraction year for which no month could be obtained (1 publication citing "Suicide after natural disasters...", 2 citing "Worlds Apart? ...")
 
 ```{r}
-# construct pub.after.ret
-refs <- refs |> mutate(pub.after.ret = NA)
-
-for (r in 1:nrow(refs)) {
-  if (refs$year[r] > refs$ret.year[r]) {
-    refs$pub.after.ret[r] = TRUE
-  }
-  else if (refs$year[r] == refs$ret.year[r]) {
-    if (any(is.na(c(refs$pub.month[r], refs$ret.month[r])))) {
-      refs$pub.after.ret[r] = NA
-    }
-    else if (refs$pub.month[r] > refs$ret.month[r]) {
-      refs$pub.after.ret[r] = TRUE
-    }
-    else {
-      refs$pub.after.ret[r] = FALSE
-    }
-  }
-  else {
-    refs$pub.after.ret[r] = FALSE
-  }
-}
-
-refs |> group_by(filepath, pub.after.ret) |> count()
+refs |> group_by(filepath, ((year < ret.year) | ((year == ret.year) & (pub.month < ret.month)))) |> 
+  count()
 ```
 
+Normalize retraction year, line graph citations against normalized retraction year:
+
+```{r}
+refs <- refs |> mutate(pub.year.norm = year - ret.year)
 
 
+refs |> group_by(filepath, pub.year.norm) |>
+  count() |>
+  ggplot(aes(x = pub.year.norm, y = n, color = filepath)) +
+    geom_line(linewidth = 0.75) +
+    geom_vline(aes(xintercept = 0), linewidth = 1, linetype = "dashed",
+               color = "black", alpha = 0.3) +
+    xlab("Years pre- or post-retraction") +
+    ylab("Total annual citations") +
+    theme(legend.title = "Paper ID") +
+    theme_linedraw()
+```
 
+Bubble plot:
 
+```{r}
+refs |> group_by(filepath, year, pub.year.norm) |>
+  count() |>
+  ggplot(aes(x = year, y = pub.year.norm, size = n, colour = filepath)) +
+    geom_point(alpha = 0.6) +
+    labs(x = "Year", y = "Years pre- or post-retraction",
+         size = "Number of citations", colour = "Paper ID")
+```
 
