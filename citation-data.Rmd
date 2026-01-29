@@ -7,6 +7,7 @@ output: pdf_document
 library(tidyverse)
 library(parallel)
 library(lubridate)
+library(RColorBrewer)
 
 knitr::opts_chunk$set(echo = TRUE)
 # setwd(...)
@@ -173,7 +174,9 @@ for (r in 1:nrow(refs)) {
   # if pub.date data is provided, use get.date function
   if (!is.na(refs$pub.date[r])) {
     datevec = get.date(refs$pub.date[r])
-    refs$pub.year[r] = datevec[1]
+    refs$pub.year[r] = ifelse(refs$year[r] == datevec[1],
+                              refs$year[r],
+                              datevec[1])
     refs$pub.month[r] = datevec[2]
     refs$pub.day[r] = datevec[3]
   }
@@ -191,8 +194,8 @@ for (r in 1:nrow(refs)) {
     
     # check whether replacement exists
     if (length(ix) == 0) {
-      # if not, insert NAs
-      refs$pub.year[r] = NA
+      # if not, re-use refs$year, insert NAs for month/day
+      refs$pub.year[r] = refs$year[r]
       refs$pub.month[r] = NA
       refs$pub.day[r] = NA
     }
@@ -244,9 +247,8 @@ refs |> group_by(filepath, pub.year.norm) |>
     geom_line(linewidth = 0.75) +
     geom_vline(aes(xintercept = 0), linewidth = 1, linetype = "dashed",
                color = "black", alpha = 0.3) +
-    xlab("Years pre- or post-retraction") +
-    ylab("Total annual citations") +
-    theme(legend.title = "Paper ID") +
+    labs(x = "Years pre- or post-retraction", y = "Total annual citations",
+         color = "Paper ID") +
     theme_minimal()
 ```
 
@@ -262,3 +264,24 @@ refs |> group_by(filepath, year, pub.year.norm) |>
     theme_minimal()
 ```
 
+Area chart:
+
+```{r}
+refs |> group_by(filepath, year, pub.year.norm) |>
+  count() |>
+  ggplot(aes(x = pub.year.norm, y = n, fill = filepath)) +
+  geom_area() +
+  scale_fill_brewer(palette = "Spectral") +
+  labs(x = "Years pre- or post-retraction",
+       y = "Total citations",
+       fill = "Paper ID")
+  
+
+```
+
+
+Monthly citation rates:
+
+```{r}
+
+```
